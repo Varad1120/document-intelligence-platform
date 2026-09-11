@@ -1,34 +1,36 @@
 """
-Text summarization using HuggingFace DistilBART.
-Generates abstractive summaries of document text.
-Uses text2text-generation task (compatible with transformers >= 4.40).
+Text summarization using HuggingFace T5/DistilBART.
+Bypasses the transformers pipeline() task registry entirely.
+Uses AutoModelForSeq2SeqLM directly — works with all transformers versions.
 """
 
 from typing import Dict
-from transformers import pipeline
+
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 
 class DocumentSummarizer:
     """
-    Generates concise summaries of document text using DistilBART.
-    Model: sshleifer/distilbart-cnn-12-6 (faster, smaller than bart-large-cnn)
+    Generates concise summaries using T5-small.
+    Loads model directly (no pipeline) — avoids task registry issues.
+    T5 summarization: prepend 'summarize: ' to input text.
     """
 
     def __init__(
         self,
-        model_name: str = "sshleifer/distilbart-cnn-12-6",
+        model_name: str = "t5-small",
         max_length: int = 150,
         min_length: int = 40,
     ):
+        self.model_name = model_name
         self.max_length = max_length
         self.min_length = min_length
-        print(f"Loading summarizer: {model_name}...")
-        # Use text2text-generation — compatible with all modern transformers versions
-        self.pipeline = pipeline(
-            "text2text-generation",
-            model=model_name,
-            device=-1,
-        )
+
+        print(f"Loading summarizer model: {model_name}...")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+        self.model.eval()
         print("✅ Summarizer ready")
 
     def summarize(self, text: str) -> Dict:
@@ -49,11 +51,10 @@ class DocumentSummarizer:
                 "compression_ratio": 0.0,
             }
 
-        # DistilBART max input is ~1024 tokens; ~4 chars/token → ~4000 chars
-        text_input = text[:4000].strip()
+        text_input = text[:3000].strip()
         word_count = len(text_input.split())
 
-        # Skip for very short texts
+        # Return as-is for very short texts
         if word_count < 30:
             return {
                 "summary": text_input,
@@ -63,19 +64,35 @@ class DocumentSummarizer:
                 "note": "Text too short — returned as-is.",
             }
 
-        max_len = min(self.max_length, max(40, word_count // 3))
-        min_len = min(self.min_length, max_len - 10)
+        # T5 requires "summarize: " prefix
+        if self.model_name.startswith("t5"):
+            prefixed = "summarize: " + text_input
+        else:
+            prefixed = text_input
 
-        result = self.pipeline(
-            text_input,
-            max_length=max_len,
-            min_length=min_len,
-            do_sample=False,
+        # Tokenize
+        inputs = self.tokenizer(
+            prefixed,
+            return_tensors="pt",
+            max_length=512,
             truncation=True,
         )
 
-        # text2text-generation returns 'generated_text' (not 'summary_text')
-        summary = result[0]["generated_text"]
+        max_len = min(self.max_length, max(40, word_count // 3))
+        min_len = min(self.min_length, max_len - 10)
+
+        # Generate summary
+        with torch.no_grad():
+            summary_ids = self.model.generate(
+                inputs["input_ids"],
+                max_length=max_len,
+                min_length=min_len,
+                length_penalty=2.0,
+                num_beams=4,
+                early_stopping=True,
+            )
+
+        summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
         summary_words = len(summary.split())
         compression = round(summary_words / max(word_count, 1), 3)
 
@@ -85,4 +102,3 @@ class DocumentSummarizer:
             "summary_length": summary_words,
             "compression_ratio": compression,
         }
-
