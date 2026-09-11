@@ -7,7 +7,7 @@ import io
 from pathlib import Path
 from typing import List, Dict, Optional
 
-import fitz                   # PyMuPDF
+import pymupdf as fitz          # PyMuPDF (replaces deprecated 'import fitz')
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter
 
