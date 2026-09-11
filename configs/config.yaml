@@ -1,0 +1,50 @@
+# App Configuration
+app:
+  title: "AI-Based Document Intelligence Platform"
+  version: "1.0.0"
+  max_file_size_mb: 20
+
+# OCR Configuration
+ocr:
+  engine: "tesseract"       # tesseract or pymupdf
+  language: "eng"
+  dpi: 300
+  min_text_length: 50       # Minimum chars to skip OCR fallback
+
+# NLP Models
+models:
+  classifier: "facebook/bart-large-mnli"
+  summarizer: "facebook/bart-large-cnn"
+  embeddings: "all-MiniLM-L6-v2"
+  ner_model: "en_core_web_sm"
+
+# Classification Labels
+classification:
+  labels:
+    - "Invoice"
+    - "Resume or CV"
+    - "Research Paper"
+    - "Legal Contract"
+    - "News Article"
+    - "Medical Report"
+    - "Financial Report"
+    - "General Document"
+
+# Summarization
+summarization:
+  max_length: 150
+  min_length: 40
+  do_sample: false
+
+# Semantic Search
+search:
+  index_path: "data/processed/faiss.index"
+  metadata_path: "data/processed/metadata.pkl"
+  top_k: 5
+  embedding_dim: 384        # all-MiniLM-L6-v2 output dim
+
+# Paths
+paths:
+  uploads: "data/uploads"
+  processed: "data/processed"
+  sample_docs: "data/sample_docs"
