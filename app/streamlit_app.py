@@ -114,7 +114,7 @@ with st.sidebar:
 
     **Models used:**
     - BART-large-MNLI (classification)
-    - BART-large-CNN (summarization)
+    - T5-small (summarization)
     - spaCy en_core_web_sm (NER)
     - all-MiniLM-L6-v2 (search)
     """)
@@ -351,7 +351,12 @@ with tab2:
             "Enter your search query",
             placeholder="e.g. 'employment terms and salary', 'patient diagnosis report'..."
         )
-        top_k = st.slider("Number of results", 1, min(10, index_size), min(5, index_size))
+        # Slider requires max > min; show fixed value when only 1 doc indexed
+        if index_size > 1:
+            top_k = st.slider("Number of results", 1, min(10, index_size), min(5, index_size))
+        else:
+            top_k = 1
+            st.info("Only 1 document indexed — returning top result.")
 
         if query:
             with st.spinner("🔍 Searching..."):
