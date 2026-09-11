@@ -14,7 +14,7 @@ ocr:
 # NLP Models
 models:
   classifier: "facebook/bart-large-mnli"
-  summarizer: "facebook/bart-large-cnn"
+  summarizer: "sshleifer/distilbart-cnn-12-6"
   embeddings: "all-MiniLM-L6-v2"
   ner_model: "en_core_web_sm"
 
